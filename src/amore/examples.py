@@ -81,7 +81,7 @@ def potential_with_bump():
     for large l the potential tends to V_null with L^2 = l (l + 1). The labels at the two ends
     show that r_* -> -inf at the horizon r = 2M and r_* -> +inf at spatial infinity."""
     teal, amber, plum = (amore.palette(n) for n in ("teal", "amber", "plum"))
-    rstar = np.linspace(-10, 50, 6000)
+    rstar = np.linspace(-15, 50, 6000)
     r = tortoise_to_r(rstar)
     v_rw = (1 - 1 / r) * (6 / r ** 2 - 3 / r ** 3)           # l = 2, spin 2, units 2M = 1
     r_photon = 1.5                                            # r = 3M, units 2M = 1
@@ -94,13 +94,13 @@ def potential_with_bump():
     at = lambda xs, v: np.interp(xs, rstar, v)                # noqa: E731
 
     fig, ax = amore.figure()
-    ax.set_xlim(-10, 50)
+    ax.set_xlim(-15, 50)
     ax.set_ylim(-0.17, 0.82)
     # The gradient fill: a vertical ramp from the shade tone at V = 0 to the light tone at the
     # peak, clipped to the area under the potential.
     under = ax.fill_between(rstar, v_rw, color="none", lw=0)
     ramp = LinearSegmentedColormap.from_list("ramp", [teal["shade"], teal["light"], teal["main"]])
-    fill = ax.imshow(np.linspace(0, 1, 256)[:, None], extent=(-10, 50, 0, v_rw.max()),
+    fill = ax.imshow(np.linspace(0, 1, 256)[:, None], extent=(-15, 50, 0, v_rw.max()),
                      origin="lower", aspect="auto", cmap=ramp, vmin=0, vmax=1.35, zorder=1)
     fill.set_clip_path(under.get_paths()[0], transform=ax.transData)
     ax.plot(rstar, v_null, color=teal["ink"], lw=1.0, ls="--", zorder=4,
@@ -108,11 +108,11 @@ def potential_with_bump():
     x_ps, y_ps = r_photon + np.log(r_photon - 1), v_rw.max()
     ax.plot([x_ps], [y_ps], ls="none", marker="o", ms=4.5, color=teal["ink"], mec="white",
             mew=0.9, zorder=5)
-    ax.text(3.6, 0.555, r"$r = 3M$", color=teal["ink"], fontsize=9)
-    ax.annotate(r"\texttt{photon sphere}", xy=(x_ps, y_ps), xytext=(3.6, 0.615),
+    ax.text(-13.4, 0.565, r"$r = 3M$", color=teal["ink"], fontsize=9)
+    ax.annotate(r"\texttt{photon sphere}", xy=(x_ps, y_ps), xytext=(-13.4, 0.615),
                 fontsize=8, color=teal["ink"],
                 arrowprops=dict(arrowstyle="->", lw=0.7, color=teal["ink"], shrinkA=2, shrinkB=3))
-    ax.text(-8.9, -0.025, r"$r \to 2M$", color=teal["ink"], fontsize=9, va="top")
+    ax.text(-13.9, -0.025, r"$r \to 2M$", color=teal["ink"], fontsize=9, va="top")
     ax.text(48.9, -0.025, r"$r \to \infty$", color=teal["ink"], fontsize=9, va="top", ha="right")
     ax.plot(rstar, v_rw, color=teal["main"], lw=1.4, zorder=4, label=r"Regge--Wheeler, $\ell = 2$")
     ax.annotate("", xy=(0, -0.05), xytext=(b, -0.05),
