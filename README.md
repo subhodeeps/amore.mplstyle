@@ -1,7 +1,6 @@
 # amore
 
-An opinionated matplotlib plot style that I developed it over the past few years while working on the figures in my work. It has LaTeX text, a heavy frame, inside ticks, 32 muted colours in 8 palettes, colour
-maps built from them, and small helpers for shaded bands, insets, colour bars and saving.
+An opinionated Matplotlib plotting style developed over the last couple of years while working on figures for my research. It features LaTeX-rendered text, heavy plot frames, inward ticks, 32 muted colours across 8 palettes, custom colormaps, and small helper functions for shaded regions, insets, colour bars, and figure saving.
 
 <p align="center">
   <img src="docs/figures/amore_blue.png" width="49%" alt="Example figure in the blue palette">
