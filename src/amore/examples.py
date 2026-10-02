@@ -4,6 +4,15 @@ The line plots and the colour maps have one plot area (amore.figure), saved with
 The corner plot, the standard map and the pendulum strip have their own sizes.
 
 Run: python -m amore.examples   (needs LaTeX, scipy and corner; see README.md)
+
+Copyright (c) 2026 Subhodeep Sarkar. Licence: MIT (LICENSE-MIT.txt in the repository root).
+
+    Name:         Subhodeep Sarkar
+    Affiliation:  IIT Gandhinagar
+    Contact:      subhodeep.sarkar1@gmail.com
+    Date:         August 2026
+    GitHub:       https://github.com/subhodeeps/amore.mplstyle
+    Website:      https://subhodeeps.github.io/
 """
 from pathlib import Path
 
@@ -25,7 +34,7 @@ def example_tag(feature):
 
 
 def wave_packet():
-    """Blue palette: a signal and a reference, a shaded transient, an inset and an arrow."""
+    """Blue palette: a mock BH ringdown signal and a mock echo signal from an ECO, a shaded prompt rigdown region, an inset and an arrow. Loosley based on Fig. 9 of Living Rev.Rel. 22 (2019) 1, 4. Needless to say, this is not the output of an actual simulation, it is a schematic plot. """
     c = amore.palette("blue")
     t = np.linspace(0, 60, 6000)
     first = np.exp(-((t - 8) / 3) ** 2) * np.sin(2.2 * t)
@@ -33,11 +42,11 @@ def wave_packet():
                 for k in range(1, 4))
 
     fig, ax = amore.figure()
-    ax.plot(t, first, color=c["ink"], ls="--", label="reference", zorder=3)
-    ax.plot(t, first + later, color=c["main"], label="signal", zorder=2)
+    ax.plot(t, first, color=c["ink"], ls="--", label="mock BH ringdown", zorder=3)
+    ax.plot(t, first + later, color=c["main"], label="mock ECO ringdown", zorder=2)
     ax.set_xlim(0, 60)
     ax.set_ylim(-1.2, 1.8)
-    amore.shade(ax, 0, 15, "transient", y=1.3, palette="blue")
+    amore.shade(ax, 0, 15, "mock prompt ringdown", y=1.3, palette="blue")
     ax.annotate("", xy=(22, -0.75), xytext=(36, -0.75),
                 arrowprops=dict(arrowstyle="<->", lw=0.8, color="black", shrinkA=0, shrinkB=0))
     ax.text(29, -0.82, r"$\Delta t$", ha="center", va="top", fontsize=10)

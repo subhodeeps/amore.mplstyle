@@ -1,6 +1,6 @@
 # amore
 
-An opinionated Matplotlib plotting style developed over the last couple of years while working on figures for my research. It features LaTeX-rendered text, heavy plot frames, inward ticks, 32 muted colours across 8 palettes, custom colormaps, and small helper functions for shaded regions, insets, colour bars, and figure saving.
+This repository presents `amore`, an opinionated Matplotlib plotting style developed over the last couple of years while working on figures for my research. It features LaTeX-rendered text, heavy plot frames, inward ticks, 32 muted colours across 8 palettes, custom colormaps, and small helper functions for shaded regions, insets, colour bars, and figure saving.
 
 <p align="center">
   <img src="docs/figures/amore_blue.png" width="49%" alt="Example figure in the blue palette">
@@ -127,8 +127,7 @@ Walt); MATLAB's own parula belongs to MathWorks and is not used. The docstring o
 cites its sources (papers, a blog post, a Wikimedia picture) and records how its colours were
 chosen. The Physical Review style sheet of
 [hosilva/physrev_mplstyle](https://github.com/hosilva/physrev_mplstyle) inspired the style.
-The author used Generative AI is setting up and organizing this repository
-
+The author used Generative AI in setting up and organizing this repository.
 
 ## Copying
 
