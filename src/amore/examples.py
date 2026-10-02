@@ -122,11 +122,13 @@ def potential_with_bump():
 
     window = (rstar >= 36) & (rstar <= 44)
     lo, hi = v_rw[window].min(), v_g[window].max()
-    # The y range of the inset runs from one whole tick to another (every 0.001), so that both
-    # ends of the axis are ticks and the ticks are evenly spaced.
+    # The y range of the inset runs from one whole tick to another (every 0.001), with a quarter
+    # of a step of free space below the lowest tick and above the highest, so that the ticks are
+    # evenly spaced and the frame does not touch the end ticks.
     step = 0.001
-    y_lo = np.floor((lo - 0.1 * (hi - lo)) / step) * step
-    y_hi = np.ceil((hi + 0.1 * (hi - lo)) / step) * step
+    t_lo = np.floor((lo - 0.1 * (hi - lo)) / step) * step     # lowest tick, 0.003
+    t_hi = np.ceil((hi + 0.1 * (hi - lo)) / step) * step      # highest tick, 0.009
+    y_lo, y_hi = t_lo - 0.25 * step, t_hi + 0.25 * step
     # The inset starts at 0.47, to the right of where the curve of the main plot passes the
     # y labels of the inset.
     ins = amore.inset(ax, [0.47, 0.30, 0.50, 0.57], xlim=(36, 44), ylim=(y_lo, y_hi))
@@ -139,7 +141,8 @@ def potential_with_bump():
     ins.set_axisbelow(False)          # the style draws ticks below the data, under the fills
     ins.xaxis.set_major_locator(MultipleLocator(1))
     ins.yaxis.set_major_locator(MultipleLocator(step))
-    ins.yaxis.set_major_formatter(FuncFormatter(lambda v, _: r"$%.3f$" % v))
+    ins.yaxis.set_major_formatter(                           # 3 x 10^-3 instead of 0.003
+        FuncFormatter(lambda v, _: r"$%d\!\times\!10^{-3}$" % round(v / 1e-3)))
     ins.tick_params(axis="both", which="both", direction="in", top=True, bottom=True, left=True,
                     right=True, zorder=10)
     ins.tick_params(axis="y", which="major", labelleft=True, labelright=False, labelsize=8)
