@@ -1,4 +1,4 @@
-# amore
+# `amore` - yet another MPL Stylesheet
 
 This repository presents `amore`, an opinionated Matplotlib plotting style developed over the last couple of years while working on figures for my research. It features LaTeX-rendered text, heavy plot frames, inward ticks, 32 muted colours across 8 palettes, custom colormaps, and small helper functions for shaded regions, insets, colour bars, and figure saving.
 
@@ -136,5 +136,10 @@ figures and the images in `docs/` are also available under CC BY 4.0 (`LICENSE-C
 The dual licence is inspired by a
 [Q&A on the Software Engineering Stack Exchange site](https://softwareengineering.stackexchange.com/questions/318777/mit-license-vs-creative-commons-for-images-and-other-assets).
 
-Name: Subhodeep Sarkar. Affiliation: IIT Gandhinagar. Contact: <subhodeep.sarkar1@gmail.com>.
-GitHub: <https://github.com/subhodeeps/amore>. Website: <https://subhodeeps.github.io/>.
+## Author Info
+
+- Name: Subhodeep Sarkar. 
+- Affiliation: IIT Gandhinagar. 
+- Contact: <subhodeep.sarkar1@gmail.com>.
+- GitHub Repo: <https://github.com/subhodeeps/amore>. 
+- Author Website: <https://subhodeeps.github.io/>.
