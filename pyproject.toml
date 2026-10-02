@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=77"]    # 77 is the first version that reads the SPDX licence string
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amore"
+version = "0.1.0"
+description = "amore: a matplotlib plot style with 32 muted colours, LaTeX text and colour maps"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE-MIT.txt"]
+authors = [{ name = "Subhodeep Sarkar", email = "subhodeep.sarkar1@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = ["numpy", "matplotlib"]
+
+[project.urls]
+Source = "https://github.com/subhodeeps/amore"
+Website = "https://subhodeeps.github.io/"
+
+[project.optional-dependencies]
+test = ["pytest>=7", "scipy"]       # scipy: the pendulum test (solve_ivp)
+examples = ["scipy", "corner"]      # only for python -m amore.examples
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+amore = ["*.mplstyle"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]                # so that pytest works before the package is installed
