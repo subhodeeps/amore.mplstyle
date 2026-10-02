@@ -46,7 +46,7 @@ def wave_packet():
     ax.plot(t, first + later, color=c["main"], label="mock ECO ringdown", zorder=2)
     ax.set_xlim(0, 60)
     ax.set_ylim(-1.2, 1.8)
-    amore.shade(ax, 0, 15, "mock prompt ringdown", y=1.3, palette="blue")
+    amore.shade(ax, 0, 15, "mock prompt ringdown", y=0.9, palette="blue")
     ax.annotate("", xy=(22, -0.75), xytext=(36, -0.75),
                 arrowprops=dict(arrowstyle="<->", lw=0.8, color="black", shrinkA=0, shrinkB=0))
     ax.text(29, -0.82, r"$\Delta t$", ha="center", va="top", fontsize=10)
