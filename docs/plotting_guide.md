@@ -97,7 +97,7 @@ The HSV hue and the CIELAB lightness L* of each main tone (`amore.lab()` gives L
 
 ## Look at the figure before you call it done
 
-Read the PNG. Look for these faults:
+Inspect (or if you are a Large Language Model, then Read) the PNG. Look for these faults:
 
 - a label or an annotation that touches a curve
 - an inset that hides data, a label or the legend
@@ -118,5 +118,4 @@ match the document.
 ## Credit
 
 The Physical Review style sheet of
-[hosilva/physrev_mplstyle](https://github.com/hosilva/physrev_mplstyle) inspired this style. That repository has no
-licence file, so this repository does not copy its file. `amore.mplstyle` is an independent file.
+[hosilva/physrev_mplstyle](https://github.com/hosilva/physrev_mplstyle) inspired this style.
