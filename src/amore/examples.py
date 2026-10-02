@@ -71,7 +71,6 @@ def tortoise_to_r(rstar):
 def potential_with_bump():
     """Teal, amber and plum (close to a triad): the Regge-Wheeler potential, and the same
     potential with a small Poschl-Teller or Gaussian bump at a distance a from the peak.
-
     The barrier has a vertical gradient fill. The dashed curve is the effective potential of
     null geodesics, V_null = (1 - 2M/r) L^2 / r^2, from the radial equation
     (dr/dlambda)^2 + V_null = E^2. A null ray depends only on b = L/E, so the scale of V_null is
@@ -80,6 +79,7 @@ def potential_with_bump():
     r_* = 1.5 + log 0.5), marked with a dot. The Regge-Wheeler peak is at r = 1.64 for l = 2;
     for large l the potential tends to V_null with L^2 = l (l + 1). The labels at the two ends
     show that r_* -> -inf at the horizon r = 2M and r_* -> +inf at spatial infinity."""
+    from matplotlib.ticker import FuncFormatter, MultipleLocator
     teal, amber, plum = (amore.palette(n) for n in ("teal", "amber", "plum"))
     rstar = np.linspace(-15, 50, 6000)
     r = tortoise_to_r(rstar)
@@ -122,12 +122,29 @@ def potential_with_bump():
 
     window = (rstar >= 36) & (rstar <= 44)
     lo, hi = v_rw[window].min(), v_g[window].max()
-    pad = 0.12 * (hi - lo)
-    ins = amore.inset(ax, [0.43, 0.30, 0.54, 0.57], xlim=(36, 44), ylim=(lo - pad, hi + pad))
-    ins.set_yticklabels([])
-    ins.tick_params(axis="x", labeltop=True, labelbottom=False)   # keep the zoom lines clear
+    # The y range of the inset runs from one whole tick to another (every 0.001), so that both
+    # ends of the axis are ticks and the ticks are evenly spaced.
+    step = 0.001
+    y_lo = np.floor((lo - 0.1 * (hi - lo)) / step) * step
+    y_hi = np.ceil((hi + 0.1 * (hi - lo)) / step) * step
+    # The inset starts at 0.47, to the right of where the curve of the main plot passes the
+    # y labels of the inset.
+    ins = amore.inset(ax, [0.47, 0.30, 0.50, 0.57], xlim=(36, 44), ylim=(y_lo, y_hi))
+    ins.set_zorder(10)
+    ins.patch.set_facecolor("white")
+    ins.patch.set_alpha(1)
+    for spine in ins.spines.values():
+        spine.set_zorder(10)
     ins.grid(False)
-    ins.fill_between(rstar, lo - pad, v_rw, color=teal["shade"], lw=0)       # under the bare V
+    ins.set_axisbelow(False)          # the style draws ticks below the data, under the fills
+    ins.xaxis.set_major_locator(MultipleLocator(1))
+    ins.yaxis.set_major_locator(MultipleLocator(step))
+    ins.yaxis.set_major_formatter(FuncFormatter(lambda v, _: r"$%.3f$" % v))
+    ins.tick_params(axis="both", which="both", direction="in", top=True, bottom=True, left=True,
+                    right=True, zorder=10)
+    ins.tick_params(axis="y", which="major", labelleft=True, labelright=False, labelsize=8)
+    ins.tick_params(axis="x", which="major", labeltop=True, labelbottom=False, labelsize=8)
+    ins.fill_between(rstar, y_lo, v_rw, color=teal["shade"], lw=0)           # under the bare V
     ins.fill_between(rstar, v_rw, v_g, color=plum["light"], alpha=0.55, lw=0)  # Gaussian area
     ins.fill_between(rstar, v_rw, v_pt, color=amber["light"], alpha=0.9, lw=0)  # P-T area
     ins.plot(rstar, v_rw, color=teal["ink"], ls=":", lw=1.1)
@@ -149,6 +166,13 @@ def potential_with_bump():
     ins.annotate("", xy=(left, ys), xytext=(right, ys), arrowprops=dict(arrow, color=plum["ink"]))
     ins.text((left + b) / 2, ys + 0.03 * (hi - lo), r"$\sigma$", color=plum["ink"], ha="center",
              fontsize=11)
+
+    ax.set_xlabel(r"$r_*$")
+    ax.set_ylabel(r"$V^{\mathrm{RW}} + \epsilon\, V_{\mathrm{bump}}$")
+    ax.legend(loc="upper left")
+    amore.tag(ax, example_tag("teal, amber, plum triad"), loc="lower right")
+    amore.save(fig, OUT / "amore_teal", dpi=README_DPI, formats=("pdf", "png"), exact_size=True)
+    plt.close(fig)
 
     def along(xs, v, dy):
         """Position and angle of a label that follows curve v at xs, offset dy in data units."""
