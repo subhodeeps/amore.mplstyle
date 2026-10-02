@@ -87,9 +87,9 @@ What the tests check:
   the neutral overlay grey, the style file (LaTeX and the frame), the exact figure size, and
   the drawing and saving of a figure as PDF and PNG. The test that draws a figure needs LaTeX;
   without it, it SKIPs, and a skip is not a pass.
-- `tests/test_examples_physics.py`: the physics behind the examples. The black-hole figure
+- `tests/test_examples_physics.py`: the physics behind the examples. The black hole figure
   (field of test charges near extremal black holes: Maxwell's equation, the flux through each
-  horizon, and the correction to Eq. (4.14) of Frolov and Zelnikov), the standard map (area
+  horizon, and a possible correction to Eq. (4.14) of Frolov and Zelnikov), the standard map (area
   conservation, repeatability, colours from the palettes), and the pendulum solver (energy
   conservation). It needs `numpy`, `matplotlib` and `scipy`; the `test` extra installs them.
 
