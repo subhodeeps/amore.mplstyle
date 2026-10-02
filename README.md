@@ -128,7 +128,7 @@ Walt); MATLAB's own parula belongs to MathWorks and is not used. The docstring o
 cites its sources (papers, a blog post, a Wikimedia picture) and records how its colours were
 chosen. The Physical Review style sheet of
 [hosilva/physrev_mplstyle](https://github.com/hosilva/physrev_mplstyle) inspired the style.
-The author used Generative AI is setting up and organizing thisrepository
+The author used Generative AI is setting up and organizing this repository
 
 
 ## Copying
