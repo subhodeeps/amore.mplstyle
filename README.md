@@ -20,6 +20,14 @@ This repository presents `amore`, an opinionated Matplotlib plotting style devel
   <img src="docs/figures/amore_pendulum.png" width="98%" alt="Example phase portrait of the pendulum: teal streamlines and red orbits">
 </p>
 
+<p align="center">
+  <img src="docs/figures/amore_diffraction.png" width="98%" alt="Example Fresnel diffraction of a double slit in the afmhot10us map: amplitude map, and the cut along its axis with the single-slit envelope">
+</p>
+
+<p align="center">
+  <img src="docs/figures/amore_airy.png" width="98%" alt="Example Airy pattern of a circular aperture in the grey afmhot10us map on a log scale, and two point sources at and below the Rayleigh limit in the afmhot10us colour map">
+</p>
+
 The 32 colours, with their hex codes and lightness:
 
 <p align="center">
@@ -32,7 +40,7 @@ You need Python 3.10 or newer. For the text, the style needs LaTeX (`latex` and 
 the TeX packages `type1cm`, `cm-super` and `amsmath`).
 
 ```bash
-git clone https://github.com/subhodeeps/amore
+git clone https://github.com/subhodeeps/amore.mplstyle.git
 cd amore
 python3 -m venv .venv && . .venv/bin/activate
 pip install -e .
@@ -53,7 +61,7 @@ amore.save(fig, "path/without/suffix")        # writes a PDF and a PNG
 ```
 
 The functions are `use`, `figure`, `palette`, `cmap`, `diverging`, `fakeparulapastel`,
-`colorbar`, `shade`, `inset`, `tag` and `save`. `docs/plotting_guide.md` has the rules and the
+`afmhot10us`, `afmhot10usgrey`, `colorbar`, `shade`, `inset`, `tag` and `save`. `docs/plotting_guide.md` has the rules and the
 colour theory guidelines. `src/amore/examples.py` makes every figure above; read it before you
 make your first figure.
 
@@ -82,15 +90,17 @@ What the tests check:
 
 - `tests/test_amore.py`: at least 30 colours, four hex tones in each palette, a colour map for
   each palette, the lightness steps inside each palette, the contrast of each ink, the distance
-  between palettes, the `fakeparulapastel` and diverging maps, the colour bar above the plot,
+  between palettes, the `fakeparulapastel`, afmhot and diverging maps, the colour bar above the plot,
   the neutral overlay grey, the style file (LaTeX and the frame), the exact figure size, and
   the drawing and saving of a figure as PDF and PNG. The test that draws a figure needs LaTeX;
   without it, it SKIPs, and a skip is not a pass.
 - `tests/test_examples_physics.py`: the physics behind the examples. The black hole figure
   (field of test charges near extremal black holes: Maxwell's equation, the flux through each
   horizon, and a possible correction to Eq. (4.14) of Frolov and Zelnikov), the standard map (area
-  conservation, repeatability, colours from the palettes), and the pendulum solver (energy
-  conservation). It needs `numpy`, `matplotlib` and `scipy`; the `test` extra installs them.
+  conservation, repeatability, colours from the palettes), the pendulum solver (energy
+  conservation), the double-slit diffraction (energy, the single-slit sinc, the fringe spacing),
+  and the Airy pattern (the enclosed energy, the FFT of a circular aperture, the Rayleigh dip).
+  It needs `numpy`, `matplotlib` and `scipy`; the `test` extra installs them.
 
 All tests pass: `pytest` prints `passed`, with no failures. If the output says `skipped`, run
 `pytest -rs` to see the reason.
@@ -111,6 +121,7 @@ and they are large, so `.gitignore` leaves them out.
 src/amore/
     __init__.py       palettes, colour maps and helpers
     amore.mplstyle    fonts, colour cycle, frame, ticks, grid
+    data/             the afmhot_10us colour table
     examples.py       the example figures and the palette chart
 tests/                pytest tests
 scripts/check.sh      install and run the tests
@@ -123,7 +134,9 @@ Every data colour in the examples is one of the 32 colours. The neutrals (black,
 `amore.OVERLAY`) and the interpolated colour maps are not. `fakeparulapastel` is a separate map:
 a pastel version of the "fake parula" map of
 [BIDS/colormap](https://github.com/BIDS/colormap) (CC0, by Nathaniel Smith and Stefan van der
-Walt); MATLAB's own parula belongs to MathWorks and is not used. The docstring of each example
+Walt); MATLAB's own parula belongs to MathWorks and is not used.
+`afmhot10us` is the `afmhot_10us` map of [ehtplot](https://github.com/liamedeiros/ehtplot) (Chi-kwan Chan, Steward Observatory, GPL-3.0; commit `7a05674`), and `afmhot10usgrey` is its grey version, with the same lightness at every point. The double-slit example follows a post by Rafael de la Fuente (2020) and Goodman, *Introduction to Fourier Optics*, sec. 3.5. The Airy-ring example uses the expression of problem P8.1.2 in Christian Hill, *Learning Scientific Programming with Python* (2nd edition, [scipython.com](https://scipython.com/books/book2/chapter-8-scipy/problems/the-airy-disc/), CC BY 4.0), adapted here.
+The docstring of each example
 cites its sources (papers, a blog post, a Wikimedia picture) and records how its colours were
 chosen. The Physical Review style sheet of
 [hosilva/physrev_mplstyle](https://github.com/hosilva/physrev_mplstyle) inspired the style.
@@ -131,10 +144,14 @@ The author used Generative AI in setting up and organizing this repository.
 
 ## Copying
 
-All files are under the MIT licence (`LICENSE-MIT.txt`). As an option, the documentation, the
-figures and the images in `docs/` are also available under CC BY 4.0 (`LICENSE-CC-BY.txt`).
-The dual licence is inspired by a
+All files are under the MIT licence (`LICENSE-MIT.txt`), unless a file states otherwise or
+contains third-party material, which stays under its own licence and notice. As an option, the
+documentation, the figures and the images in `docs/` are also available under CC BY 4.0
+(`LICENSE-CC-BY.txt`). The dual licence is inspired by a
 [Q&A on the Software Engineering Stack Exchange site](https://softwareengineering.stackexchange.com/questions/318777/mit-license-vs-creative-commons-for-images-and-other-assets).
+The colour table `src/amore/data/afmhot_10us.ctab` is copied from
+[ehtplot](https://github.com/liamedeiros/ehtplot) (Copyright (C) 2018--2019 Chi-kwan Chan and
+Steward Observatory) and remains under the GNU General Public License, version 3 or later.
 
 ## Author Info
 
