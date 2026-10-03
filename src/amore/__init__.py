@@ -26,10 +26,12 @@ Copyright (c) 2026 Subhodeep Sarkar. Licence: MIT (LICENSE-MIT.txt in the reposi
 """
 from pathlib import Path
 
+import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
 STYLE = Path(__file__).with_name("amore.mplstyle")
+DATA = Path(__file__).with_name("data")
 
 # Eight palettes of four tones, 32 colours. Each palette has a deep ink for a reference curve
 # or a label, a muted main colour, a light tone for fills, and a very light shade for
@@ -129,6 +131,62 @@ def fakeparulapastel(pastel=PARULA_PASTEL):
     colours = [tuple(c + pastel * (1 - c) for c in rgb) for rgb in FAKE_PARULA]
     return LinearSegmentedColormap.from_list("amore_parula", colours)
 
+def lstar(rgb):
+    """Return the CIELAB lightness L* of sRGB colours, from 0 (black) to 100 (white).
+
+    This is lab() for arrays: pass one colour as (r, g, b) or many as an array of shape
+    (..., 3), with values from 0 to 1. Values outside that range are clipped. L* is the
+    perceived lightness, so equal steps in L* look like equal steps in brightness.
+    """
+    rgb = np.clip(np.asarray(rgb, dtype=float), 0, 1)
+    rgb = np.where(rgb <= 0.04045, rgb / 12.92, ((rgb + 0.055) / 1.055) ** 2.4)  # undo gamma
+    y = rgb @ np.array([0.2126, 0.7152, 0.0722])                 # luminance (D65 white)
+    return 116 * np.where(y > 0.008856, np.cbrt(y), 7.787 * y + 16 / 116) - 16
+
+
+def grey_of_lstar(lightness):
+    """Return the sRGB grey level (0 to 1) that has the lightness L* = `lightness`.
+
+    This is the inverse of lstar() for greys. A grey has equal r, g and b, and the weights in
+    lstar() add up to 1, so its luminance equals its linear grey value and the formula can
+    be run backwards: L* to luminance, then luminance to sRGB. Use it as
+    `lstar(grey_of_lstar(L))`, which gives back L.
+    """
+    lightness = np.asarray(lightness, dtype=float)
+    y = np.where(lightness > 8, ((lightness + 16) / 116) ** 3, lightness / 903.3)
+    return np.where(y <= 0.0031308, 12.92 * y, 1.055 * y ** (1 / 2.4) - 0.055)
+
+
+def _afmhot_table():
+    """Return the 256 RGB rows of afmhot_10us from data/afmhot_10us.ctab, shape (256, 3).
+
+    The file has values like 1.000001, which matplotlib rejects, so they are clipped to 0..1.
+    """
+    return np.clip(np.loadtxt(DATA / "afmhot_10us.ctab"), 0, 1)
+
+
+def afmhot10us():
+    """Return the afmhot_10us colour map of the Event Horizon Telescope (ehtplot).
+
+    It is matplotlib's afmhot, made uniform in lightness (the u), with the floor lifted by
+    10 % (the 10) and the chroma made symmetric (the s). It runs from a dark brown to white
+    through red and yellow, and its lightness rises from L* 5.7 to 100 at every step, so it
+    shows no false features. Use it for an intensity image. For print in black and white, use
+    afmhot10usgrey(). The 256 colours are in data/afmhot_10us.ctab, with their source.
+    """
+    return LinearSegmentedColormap.from_list("amore_afmhot_10us", _afmhot_table())
+
+
+def afmhot10usgrey():
+    """Return the grey version of afmhot10us(), with the same lightness at every point.
+
+    Each grey has the L* of the colour at the same position in afmhot10us(), so a figure in
+    this map carries the same lightness as the colour one, and the two can be compared. Use
+    it for print in black and white, or to check that a colour figure still reads without its
+    hues. The grey runs from about 0.07 to 1.
+    """
+    level = np.clip(grey_of_lstar(lstar(_afmhot_table())), 0, 1)
+    return LinearSegmentedColormap.from_list("amore_afmhot_10us_grey", np.stack([level] * 3, 1))
 
 # The plot area of every figure, in inches: the same for a line plot and for a map, so that
 # figures side by side match. A figure with a colour bar is taller by COLORBAR_BAND only.

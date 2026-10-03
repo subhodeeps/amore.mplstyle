@@ -66,7 +66,23 @@ def test_the_fakeparulapastel_map_rises_in_lightness():
     assert all(b > a for a, b in zip(lightness, lightness[1:]))
     assert lightness[0] < 40 and lightness[-1] > 90       # it uses most of the lightness range
 
+def test_the_afmhot_maps_rise_in_lightness_and_the_grey_matches():
+    """afmhot10us is uniform in lightness, and its grey version carries the same L*."""
+    import numpy as np
+    x = np.linspace(0, 1, 256)
+    colour, grey = ps.afmhot10us()(x)[:, :3], ps.afmhot10usgrey()(x)[:, :3]
+    lc, lg = ps.lstar(colour), ps.lstar(grey)
+    assert np.all(np.diff(lc) > 0)                           # no false features
+    assert lc[0] < 10 and lc[-1] > 99
+    assert np.allclose(grey[:, 0], grey[:, 1]) and np.allclose(grey[:, 1], grey[:, 2])
+    assert np.abs(lc - lg).max() < 0.1
 
+
+def test_lstar_agrees_with_lab():
+    for h in ("#2e1a6e", "#5c9dc7", "#f4f4fa"):
+        rgb = [int(h[i:i + 2], 16) / 255 for i in (1, 3, 5)]
+        assert abs(float(ps.lstar(rgb)) - ps.lab(h)[0]) < 1e-6
+        
 def test_the_colour_bar_sits_above_the_plot_and_keeps_its_size():
     """amore.figure(colorbar=True) adds a band above the plot. The plot area, in inches, stays
     the same as without a colour bar, and the bar sits in the band, outside the axes."""

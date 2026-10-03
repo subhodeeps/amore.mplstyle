@@ -4,8 +4,9 @@ The plot style `amore` is in `src/amore/`:
 
 - `amore.mplstyle` sets the fonts, the colour cycle, the frame, the ticks and the grid.
 - `__init__.py` adds the named palettes and the helpers `use`, `figure`, `palette`, `cmap`,
-  `fakeparulapastel`, `diverging`, `colorbar`, `shade`, `inset`, `tag` and `save`.
-- `examples.py` makes the seven example figures and the palette chart in `README.md`
+  `fakeparulapastel`, `afmhot10us`, `afmhot10usgrey`, `diverging`, `colorbar`, `shade`, `inset`,
+  `tag` and `save`.
+- `examples.py` makes the eight example figures and the palette chart in `README.md`
   (`python -m amore.examples`). Read it before you make your first figure.
 
 ## Rules
@@ -27,14 +28,22 @@ The plot style `amore` is in `src/amore/`:
    A new colour must pass the rules in `tests/test_amore.py`: lightness steps, ink
    contrast and the distance to the other palettes.
 4. For a contour plot or an image, use `amore.cmap(name)`. For a field with a wide range, use
-   `amore.fakeparulapastel()`, a pastel map from violet to yellow. For a signed field, use
+   `amore.fakeparulapastel()`, a pastel map from violet to yellow. For an intensity image (a
+   brightness that is zero where there is no signal), use `amore.afmhot10us()`, and see
+   guideline 10; `amore.afmhot10usgrey()` is its grey version, with the same lightness at every
+   point, for print in black and white. For a signed field, use
    `amore.diverging("red", "green")` with `vmin = -vmax`, so that zero is at the centre.
    Make a map with `amore.figure(colorbar=True)` and put the bar above the plot with
    `amore.colorbar()`. The bar covers no data, and the plot keeps the same size as a line plot.
-   A colour bar beside the axes makes the plot smaller than its neighbours.
+   A colour bar beside the axes makes the plot smaller than its neighbours, unless all the
+   panels of a wide figure have the same size, as in the double-slit and Airy examples.
 5. Draw a line on top of a colour map (flow lines, guides) in `amore.OVERLAY` at
    `amore.OVERLAY_ALPHA`. This is a dark neutral grey. White vanishes on the light centre of a
    map. Black competes with the contour lines. A coloured line looks like a quantity.
+   On `afmhot10us` the choice depends on where the line runs: `OVERLAY` is lost where the map is
+   between about L* 13 and 26 (the lowest fifth of the scale), and white is lost only over the
+   brightest tones (above about L* 90). Use white over the dark and middle of the map and
+   `OVERLAY` over the bright core.
 6. Use one palette for one family of figures. Then one quantity has one colour in the whole
    document.
 7. Write each axis label, legend entry and mathematical symbol in LaTeX. Write a text note
@@ -87,6 +96,9 @@ The HSV hue and the CIELAB lightness L* of each main tone (`amore.lab()` gives L
    - Ordered values: a sequential map (`amore.cmap(name)`).
    - Values with a wide range: `amore.fakeparulapastel()`. Never use a rainbow map such as jet,
      because its lightness is not monotonic and it makes false edges.
+   - Brightness or intensity: `amore.afmhot10us()`, whose lightness rises at every step from
+     L* 6 to 100 (guideline 10). Its grey version `amore.afmhot10usgrey()` has the same L* at
+     every point, so the figure keeps its meaning in black and white.
    - Values with a meaningful zero: a diverging map with a neutral centre
      (`amore.diverging()`), and `vmin = -vmax`.
 8. **Fills are light and lines are dark.** A fill uses `light` or `shade`, with a line in `main`
@@ -94,6 +106,34 @@ The HSV hue and the CIELAB lightness L* of each main tone (`amore.lab()` gives L
    ratio. A marker on a dark fill gets an edge in its own `ink` tone.
 9. **Do not use a colour that is not in a palette**, and do not use pure grey for a quantity.
    Grey is for the frame, the grid and `amore.OVERLAY` only.
+10. **Use `afmhot10us` for a brightness image whose zero is dark.** The map is for a quantity
+    that cannot be negative, where zero means no signal and the largest value should look
+    brightest. Use it for:
+    - images of the light around a black hole: the shadow and the photon ring, from a simulation
+      (an intensity map) or from observation (a radio or VLBI brightness image). The ehtplot
+      package made these maps for such images, and its notebook compares them on a black-hole
+      simulation;
+    - other astrophysical images of emission: jets, accretion discs, radio maps, surface
+      brightness and emission-line maps, images of stars and of close binaries (the Rayleigh
+      limit in the Airy example), anything where "hot" is bright;
+    - Fourier optics and wave optics: the intensity or the amplitude of a diffraction or
+      interference pattern, a point spread function such as the Airy rings, a focal spot or
+      speckle (the double-slit and Airy examples).
+
+    Why it works: its lightness rises at every step, so a feature in the image is a feature in
+    the data and not a step in the map, and its floor is lifted to L* 6, so the darkest values
+    stay apart from a black frame and a dim feature stays visible. Its limits:
+    - Do not use it for a signed field (use `diverging`), or for a field with no natural zero
+      (use `fakeparulapastel`).
+    - Set `vmin = 0`, so that zero is the dark end, and say on the colour bar what the colour
+      shows and how it is scaled, for example `|Psi| / |Psi|_max`. If the image is mostly black on
+      a linear scale, plot a root or a logarithm of the value and say so in the label; for a
+      logarithm, state the floor, as the Airy example does (10^-4).
+    - Use `afmhot10usgrey` for print in black and white, or to check that the figure reads
+      without its hues. The two maps have the same lightness at every value, so they can share
+      a figure, as in the Airy example, if each panel has its own colour bar.
+    - The map starts almost black, so the image is a dark panel on the page. Choose the colour of
+      anything drawn over it as rule 5 says.
 
 ## Look at the figure before you call it done
 

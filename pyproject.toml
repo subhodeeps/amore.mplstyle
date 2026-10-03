@@ -14,7 +14,7 @@ requires-python = ">=3.10"
 dependencies = ["numpy", "matplotlib"]
 
 [project.urls]
-Source = "https://github.com/subhodeeps/amore"
+Source = "https://github.com/subhodeeps/amore.mplstyle"
 Website = "https://subhodeeps.github.io/"
 
 [project.optional-dependencies]
@@ -25,7 +25,7 @@ examples = ["scipy", "corner"]      # only for python -m amore.examples
 where = ["src"]
 
 [tool.setuptools.package-data]
-amore = ["*.mplstyle"]
+amore = ["*.mplstyle", "data/*.ctab"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
