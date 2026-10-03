@@ -1,4 +1,4 @@
-"""Regenerate the seven example figures and the palette chart of the amore style (in README.md).
+"""Regenerate the nine example figures and the palette chart of the amore style (in README.md).
 
 The line plots and the colour maps have one plot area (amore.figure), saved with exact_size=True.
 The corner plot, the standard map and the pendulum strip have their own sizes.
@@ -170,12 +170,12 @@ def potential_with_bump():
     ins.text((left + b) / 2, ys + 0.03 * (hi - lo), r"$\sigma$", color=plum["ink"], ha="center",
              fontsize=11)
 
-    ax.set_xlabel(r"$r_*$")
-    ax.set_ylabel(r"$V^{\mathrm{RW}} + \epsilon\, V_{\mathrm{bump}}$")
-    ax.legend(loc="upper left")
-    amore.tag(ax, example_tag("teal, amber, plum triad"), loc="lower right")
-    amore.save(fig, OUT / "amore_teal", dpi=README_DPI, formats=("pdf", "png"), exact_size=True)
-    plt.close(fig)
+    # ax.set_xlabel(r"$r_*$")
+    # ax.set_ylabel(r"$V^{\mathrm{RW}} + \epsilon\, V_{\mathrm{bump}}$")
+    # ax.legend(loc="upper left")
+    # amore.tag(ax, example_tag("teal, amber, plum triad"), loc="lower right")
+    # amore.save(fig, OUT / "amore_teal", dpi=README_DPI, formats=("pdf", "png"), exact_size=True)
+    # plt.close(fig)
 
     def along(xs, v, dy):
         """Position and angle of a label that follows curve v at xs, offset dy in data units."""
@@ -865,6 +865,37 @@ def chirikov_map():
     amore.save(fig, OUT / "amore_chirikov", dpi=dpi, formats=("pdf", "png"), exact_size=True)
     plt.close(fig)
 
+def chirikov_square():
+    """The Chirikov standard map at K = 0.971635 in the whole phase space, as a square figure.
+
+    This is the square version of chirikov_map(), for the documentation (docs/examples.md). It
+    shows the whole phase space 0 <= phi < 2 pi, -pi <= p < pi, centred on the big island at
+    phi = pi, with 300 x 300 initial points and 1000 steps each, and the same colours as
+    chirikov_map(): the bands are invariant curves, the speckled region is the chaotic sea, and
+    the colours carry no meaning. The pixels are square, and the figure is 6 x 6 in with a square
+    plot area. Source and colours: see chirikov_map(). Tests: tests/test_examples_physics.py.
+    """
+    k_map = 0.971635
+    size_in, axes_in = 6.0, 5.0                      # a square figure with a square plot area
+    left, bottom = 0.75, 0.65                        # margins in inches; the title has the top one
+    dpi = README_DPI
+    n = round(axes_in * dpi)                         # pixels along each side of the plot area
+    image = standard_map_image(k_map, phi_range=(0.0, 2 * np.pi), shape=(n, n), grid=(300, 300))
+    fig = plt.figure(figsize=(size_in, size_in))
+    ax = fig.add_axes([left / size_in, bottom / size_in, axes_in / size_in, axes_in / size_in])
+    ax.imshow(image, origin="lower", extent=(0.0, 2 * np.pi, -np.pi, np.pi),
+              interpolation="nearest", aspect="equal")
+    ax.set_xticks([0, np.pi / 2, np.pi, 3 * np.pi / 2, 2 * np.pi],
+                  [r"$0$", r"$\pi/2$", r"$\pi$", r"$3\pi/2$", r"$2\pi$"])
+    ax.set_yticks([-np.pi, -np.pi / 2, 0, np.pi / 2, np.pi],
+                  [r"$-\pi$", r"$-\pi/2$", r"$0$", r"$\pi/2$", r"$\pi$"])
+    ax.grid(False)
+    ax.set_xlabel(r"$\varphi$")
+    ax.set_ylabel(r"$p$")
+    ax.set_title(r"$K = %.6f$" % k_map, fontsize=11)
+    amore.tag(ax, example_tag("all 32 colours"), loc="lower right")
+    amore.save(fig, OUT / "amore_chirikov_square", dpi=dpi, formats=("pdf", "png"), exact_size=True)
+    plt.close(fig)
 
 def pendulum_orbits(x0, y0, t_end, steps):
     """Orbits of the undamped pendulum, x' = y and y' = -sin(x), with scipy's solve_ivp.
@@ -970,14 +1001,307 @@ def pendulum_portrait():
     plt.close(fig)
 
 
+def coverage(centres, spacing, lo, hi):
+    """Fraction of each cell (centre +- spacing/2) that lies inside the interval [lo, hi]."""
+    left = np.maximum(centres - spacing / 2, lo)
+    right = np.minimum(centres + spacing / 2, hi)
+    return np.clip(right - left, 0, None) / spacing
+
+
+def slit_aperture(x, y, slits):
+    """Transmission (0 to 1) on the grid x, y of rectangular slits (x0, y0, width, height).
+
+    A cell on an edge is partly open, so the open area is exact and does not jump with the grid.
+    """
+    out = np.zeros((y.size, x.size))
+    for x0, y0, width, height in slits:
+        out += np.outer(coverage(y, y[1] - y[0], y0 - height / 2, y0 + height / 2),
+                        coverage(x, x[1] - x[0], x0 - width / 2, x0 + width / 2))
+    return np.clip(out, 0, 1)
+
+
+def fresnel_pattern(aperture, dx, dy, wavelength, distance):
+    """Intensity |Psi|^2 on a screen at `distance`, for a unit plane wave through `aperture`.
+
+    The Fresnel integral is a Fourier transform (Goodman, Introduction to Fourier Optics,
+    sec. 3.5): Psi = R F[f exp(i k (x'^2 + y'^2) / 2 z)], with R = k exp(i k z) / (2 pi i z) and
+    k = 2 pi / wavelength. `aperture` has shape (ny, nx), on the grid dx * (j - nx // 2) and
+    dy * (i - ny // 2). Returns the screen coordinates xs, ys (the same length unit as the
+    inputs) and the intensity, in units of the incident intensity. By Parseval's theorem the
+    integral of the intensity over the screen is dx dy sum(aperture^2).
+
+    The phase of the factor exp(i k x'^2 / 2 z) must change by less than pi from one cell to
+    the next, or the transform aliases; otherwise this raises ValueError.
+    """
+    ny, nx = aperture.shape
+    x = dx * (np.arange(nx) - nx // 2)
+    y = dy * (np.arange(ny) - ny // 2)
+    k = 2 * np.pi / wavelength
+    step = k / distance * max(abs(x).max() * dx, abs(y).max() * dy)
+    if step >= np.pi:
+        raise ValueError("the aperture grid is too coarse for this distance: %.2f rad per cell"
+                         % step)
+    chirp = np.exp(1j * k / (2 * distance) * (x[None, :] ** 2 + y[:, None] ** 2))
+    # ifftshift puts x = 0 at index 0, which the FFT takes as its origin; fftshift undoes it.
+    transform = np.fft.fftshift(np.fft.fft2(np.fft.ifftshift(aperture * chirp)))
+    psi = transform * dx * dy / (1j * wavelength * distance)       # |R| = 1 / (wavelength z)
+    xs = wavelength * distance / (nx * dx) * (np.arange(nx) - nx // 2)
+    ys = wavelength * distance / (ny * dy) * (np.arange(ny) - ny // 2)
+    return xs, ys, np.abs(psi) ** 2
+
+def double_slit():
+    """afmhot10us: Fresnel diffraction of a plane wave by a double slit, in two panels.
+
+    The wave goes through two slits, 22 um wide and 88 um high, with centres 128 um apart, and
+    falls on a screen 5 m behind them. The wavelength is 18.5 Angstrom, as in the post below.
+    The pattern is the Fresnel integral computed with one FFT (fresnel_pattern). Left: the map
+    of the amplitude |Psi| / |Psi|_max on a linear scale, as in the post (the intensity is
+    mostly black), in the colour map afmhot10us, with its colour bar on the right of the map.
+    The amber triangles at the edges mark the row y = 0. Right: the cut along that row, in
+    amber, with the envelope as a dashed slate curve: twice the amplitude of one slit alone. The
+    two panels have the same size and the same x axis, so a fringe in the map is level with the
+    same fringe in the cut. The envelope lies about 4 % above the central maximum and follows
+    the fringes only roughly, because each slit is displaced by 64 um from the axis. For a
+    separation as large as 0.5 mm the envelope no longer holds, as the post shows.
+
+    Source: R. de la Fuente, "Solving the Diffraction Integral with the Fast Fourier Transform
+    (FFT) and Python", rafael-fuente.github.io (18 October 2020); the model is Goodman,
+    Introduction to Fourier Optics, sec. 3.5. This code is new: the grid has spacing 1 um, the
+    slit edges are partly open cells, and the transform is checked in
+    tests/test_examples_physics.py (energy, the single-slit sinc, the fringe spacing).
+
+    Layout. 10 x 4 in, the width of the pendulum strip and the height of every other example.
+    Both panels have the standard plot height. The colour bar is on the right of the map, and
+    not above it as in the other maps: the figure is wide enough, and both panels still have the
+    same size. The tag is in the margin under the plots, so that it covers nothing.
+    """
+    mm = 1e-3                                   # lengths in mm
+    wavelength, distance, separation = 18.5e-7, 5000.0, 128 * mm
+    width, height = 22 * mm, 88 * mm
+    dx = dy = 1 * mm
+    nx, ny = 2800, 2000
+    x, y = dx * (np.arange(nx) - nx // 2), dy * (np.arange(ny) - ny // 2)
+    both = [(-separation / 2, 0, width, height), (separation / 2, 0, width, height)]
+    xs, ys, double = fresnel_pattern(slit_aperture(x, y, both), dx, dy, wavelength, distance)
+    _, _, single = fresnel_pattern(slit_aperture(x, y, [(0, 0, width, height)]),
+                                   dx, dy, wavelength, distance)
+
+    half_x, half_y = 2.0, 1.3                   # the part of the screen that is drawn
+    cols = np.abs(xs) <= half_x
+    rows = np.abs(ys) <= half_y
+    top = np.sqrt(double.max())
+    cut = ny // 2                               # the row y = 0
+    amber, slate = amore.palette("amber"), amore.palette("slate")
+
+    # Layout in inches, left to right: the map, a vertical colour bar with its labels, the cut.
+    area = amore.PLOT_AREA
+    width_in, height_in = 10.0, amore.FIGURE_SIZE[1]
+    left, bar_gap, bar_width, bar_labels, cut_labels, right = area["left"], 0.12, 0.12, 0.62, 0.72, 0.15
+    panel = (width_in - left - bar_gap - bar_width - bar_labels - cut_labels - right) / 2
+    fig = plt.figure(figsize=(width_in, height_in))
+
+    def place(x0, w):
+        return fig.add_axes([x0 / width_in, area["bottom"] / height_in, w / width_in,
+                             area["height"] / height_in])
+    ax = place(left, panel)
+    cax = place(left + panel + bar_gap, bar_width)
+    ax_cut = place(left + panel + bar_gap + bar_width + bar_labels + cut_labels, panel)
+
+    hx, hy = (xs[1] - xs[0]) / 2, (ys[1] - ys[0]) / 2
+    image = ax.imshow(np.sqrt(double[np.ix_(rows, cols)]) / top, origin="lower", aspect="auto",
+                      cmap=amore.afmhot10us(), vmin=0, vmax=1, interpolation="bilinear",
+                      extent=(xs[cols][0] - hx, xs[cols][-1] + hx, ys[rows][0] - hy, ys[rows][-1] + hy))
+    ax.set_xlim(-half_x, half_x)
+    ax.set_ylim(-half_y, half_y)
+    ax.grid(False)
+    ax.set_xlabel(r"$x$ (mm)")
+    ax.set_ylabel(r"$y$ (mm)")
+    # Triangles in the colour of the cut mark the row that it is taken along.
+    mark = dict(ls="none", ms=6, color=amber["main"], mec="white", mew=0.6, clip_on=False, zorder=6)
+    ax.plot([-half_x], [0], marker=">", **mark)
+    ax.plot([half_x], [0], marker="<", **mark)
+
+    # The colour bar is formatted like amore.colorbar(), but vertical.
+    ticks = [0, 0.25, 0.5, 0.75, 1]
+    bar = fig.colorbar(image, cax=cax, orientation="vertical", ticks=ticks)
+    bar.set_ticklabels([f"{t:g}" for t in ticks])
+    bar.set_label(r"$|\Psi|/|\Psi|_{\max}$", fontsize=9, labelpad=6)
+    cax.tick_params(labelsize=8, length=2.5, which="major")
+    cax.minorticks_off()
+    bar.outline.set_linewidth(1.0)
+
+    ax_cut.plot(xs[cols], np.sqrt(double[cut, cols]) / top, color=amber["main"], lw=1.0,
+                label=r"two slits")
+    ax_cut.plot(xs[cols], 2 * np.sqrt(single[cut, cols]) / top, color=slate["main"], lw=1.0,
+                ls="--", label=r"envelope")
+    ax_cut.set_xlim(-half_x, half_x)
+    ax_cut.set_ylim(0, 1.1)
+    ax_cut.set_yticks([0, 0.25, 0.5, 0.75, 1])
+    ax_cut.set_yticklabels([r"$0$", r"$0.25$", r"$0.5$", r"$0.75$", r"$1$"])
+    ax_cut.set_xlabel(r"$x$ (mm)")
+    ax_cut.set_ylabel(r"$|\Psi|/|\Psi|_{\max}$ at $y=0$")
+    ax_cut.legend(loc="upper right")
+    # The tag goes in the margin under the plots, so that it covers nothing.
+    fig.text(1 - right / width_in, 0.05 / height_in, example_tag("afmhot10us"),
+             ha="right", va="bottom", fontsize=8)
+    amore.save(fig, OUT / "amore_diffraction", dpi=README_DPI, formats=("pdf", "png"), exact_size=True)
+    plt.close(fig)
+
+def airy_pattern(rho):
+    """Airy pattern I / I0 = (2 J1(pi rho) / (pi rho))^2 of a circular aperture of diameter D.
+
+    rho = theta D / lambda is the angle from the axis in units of lambda / D. This is the
+    expression of problem P8.1.2 of C. Hill, "Learning Scientific Programming with Python"
+    (2nd edition), with x = k a sin(theta) = pi rho, a = D / 2 and k = 2 pi / lambda, and with
+    scipy.special.j1 for J1. At rho = 0 the limit I / I0 = 1 is used.
+    """
+    from scipy.special import j1
+    x = np.pi * np.asarray(rho, dtype=float)
+    out = np.ones_like(x)
+    nonzero = x != 0
+    out[nonzero] = (2 * j1(x[nonzero]) / x[nonzero]) ** 2
+    return out
+
+
+def point_sources(x, y, centres):
+    """Image I / I0 of equally bright point sources seen through a circular aperture.
+
+    x and y are coordinates in units of lambda / D, and `centres` is a list of (x0, y0). The
+    sources are incoherent (stars), so their Airy patterns add as intensities. I0 is the peak
+    intensity of one source alone.
+    """
+    return sum(airy_pattern(np.hypot(x - x0, y - y0)) for x0, y0 in centres)
+
+
+def airy_rings():
+    """afmhot10usgrey and afmhot10us: the Airy pattern and the Rayleigh limit, in two panels.
+
+    Left: the image of one point source through a circular aperture, in the grey map
+    afmhot10usgrey, on a logarithmic scale from 10^-4 to 1 (the rings carry less than 2 % of the
+    peak, so a linear scale shows only the disc). The axes are in units of lambda / D. The first
+    dark ring is at 1.22 lambda / D, the radius of the Rayleigh criterion. Right: two equally
+    bright point sources, in the colour map afmhot10us, on a linear scale, each image divided by
+    its own maximum, with one colour bar. The white crosses mark the true positions of the
+    sources and the thin white contours are at 0.25, 0.5 and 0.75. Top: the sources are
+    1.22 lambda / D apart, the Rayleigh limit, where the dip between the two maxima is at
+    73.5 % of the peak, so the 0.75 contour is two separate curves. Bottom: half that distance,
+    where the two sources merge into one blob and the 0.75 contour is one curve.
+
+    Source of the code: the Airy pattern is I = I0 (2 J1(x) / x)^2, from problem P8.1.2
+    "The Airy disc" in C. Hill, "Learning Scientific Programming with Python" (2nd edition),
+    scipython.com (text and code CC BY 4.0), with x = pi rho. The physics is G. B. Airy (1835);
+    Born and Wolf, Principles of Optics, chap. 8 (Fraunhofer diffraction at a circular
+    aperture); the criterion is Lord Rayleigh, Phil. Mag. 8, 261 (1879). The grid, the
+    two-source sum, the figure and the tests (tests/test_examples_physics.py) are new: the
+    zero of J1 and the enclosed energy 1 - J0^2 - J1^2 (83.8 % inside the first dark ring) are
+    checked, and the pattern is checked against the FFT of a circular aperture.
+
+    Layout. 10 x 4 in. All images have square pixels: the axes boxes are sized in inches to the
+    shape of each field, so aspect="auto" gives circles that are round. The left image has the
+    plot height and the plot width of a 10 in wide figure with two equal panels; the two right
+    images share the height of the left one, and one colour bar serves both.
+    """
+    h = 0.01                                            # grid step, in lambda / D
+    area = amore.PLOT_AREA
+    width_in, height_in = 10.0, amore.FIGURE_SIZE[1]
+    # Columns in inches, left to right: the left image, its bar and bar labels, the room for the
+    # y labels of the right images, the right images, a second bar and its labels.
+    left, bar_gap, bar_width, bar_labels, right_labels, right = area["left"], 0.12, 0.12, 0.62, 0.72, 0.15
+    side_w = (width_in - left - bar_gap - bar_width - bar_labels - right_labels - right) / 2
+    side_h = area["height"]
+    half_y = 5.0                                        # left image: -5 ... 5 in y
+    half_x = half_y * side_w / side_h                   # and the same scale in x
+    gx_axis = h * np.arange(-round(half_x / h), round(half_x / h) + 1)
+    gy_axis = h * np.arange(-round(half_y / h), round(half_y / h) + 1)
+    gx, gy = np.meshgrid(gx_axis, gy_axis)
+    single = point_sources(gx, gy, [(0.0, 0.0)])
+    floor = 1e-4                                        # the log scale starts at 10^-4
+    log_image = np.log10(np.maximum(single, floor))
+
+    row_gap = 0.12
+    row_h = (area["height"] - row_gap) / 2
+    right_x = left + side_w + bar_gap + bar_width + bar_labels + right_labels
+    right_w = width_in - right - bar_labels - bar_gap - bar_width - right_x
+    fig = plt.figure(figsize=(width_in, height_in))
+
+    def place(x0, y0, w, hgt):
+        return fig.add_axes([x0 / width_in, y0 / height_in, w / width_in, hgt / height_in])
+    bottom = area["bottom"]
+    ax = place(left, bottom, side_w, side_h)
+    cax = place(left + side_w + bar_gap, bottom, bar_width, side_h)
+    ax_top = place(right_x, bottom + row_h + row_gap, right_w, row_h)
+    ax_bot = place(right_x, bottom, right_w, row_h)
+    cax2 = place(right_x + right_w + bar_gap, bottom, bar_width, area["height"])
+
+    def bar_style(bar, label, ticks, tick_labels):
+        bar.set_ticks(ticks)
+        bar.set_ticklabels(tick_labels)
+        bar.set_label(label, fontsize=9, labelpad=6)
+        bar.ax.tick_params(labelsize=8, length=2.5, which="major")
+        bar.ax.minorticks_off()
+        bar.outline.set_linewidth(1.0)
+
+    image = ax.imshow(log_image, origin="lower", cmap=amore.afmhot10usgrey(), vmin=-4, vmax=0,
+                      interpolation="antialiased", aspect="auto",
+                      extent=(gx_axis[0] - h / 2, gx_axis[-1] + h / 2,
+                              gy_axis[0] - h / 2, gy_axis[-1] + h / 2))
+    ax.set_xlim(gx_axis[0], gx_axis[-1])
+    ax.set_ylim(-half_y, half_y)
+    ax.grid(False)
+    ax.set_xlabel(r"$x$ ($\lambda/D$)")
+    ax.set_ylabel(r"$y$ ($\lambda/D$)")
+    bar = fig.colorbar(image, cax=cax, orientation="vertical")
+    bar_style(bar, r"$\log_{10}(I/I_0)$", [-4, -3, -2, -1, 0],
+              [r"$-4$", r"$-3$", r"$-2$", r"$-1$", r"$0$"])
+
+    # The right images have the same scale on both axes. The field is tight, so that the two
+    # sources fill the image.
+    half_ry = 1.2
+    half_rx = half_ry * right_w / row_h
+    xr = h * np.arange(-round(half_rx / h), round(half_rx / h) + 1)
+    yr = h * np.arange(-round(half_ry / h), round(half_ry / h) + 1)
+    rx, ry = np.meshgrid(xr, yr)
+    rayleigh = 1.21967                                  # the first zero of J1, over pi (rounded)
+    note = dict(facecolor="white", alpha=0.78, edgecolor="none", boxstyle="round,pad=0.15")
+    for axis, separation, text in ((ax_top, rayleigh, r"$d = 1.22\,\lambda/D$ (Rayleigh)"),
+                                   (ax_bot, rayleigh / 2, r"$d = 0.61\,\lambda/D$")):
+        pair = point_sources(rx, ry, [(-separation / 2, 0.0), (separation / 2, 0.0)])
+        pair = pair / pair.max()                        # each image in units of its own maximum
+        shown = axis.imshow(pair, origin="lower", cmap=amore.afmhot10us(), vmin=0, vmax=1,
+                            interpolation="antialiased", aspect="auto",
+                            extent=(xr[0] - h / 2, xr[-1] + h / 2, yr[0] - h / 2, yr[-1] + h / 2))
+        # Thin white contours (white is seen on the dark and middle of the map; rule 5) and a
+        # cross at each true source position.
+        axis.contour(rx, ry, pair, levels=[0.25, 0.5, 0.75], colors="white", linewidths=0.5,
+                     alpha=0.7)
+        axis.plot([-separation / 2, separation / 2], [0, 0], ls="none", marker="+", ms=5,
+                  mew=0.9, color="white")
+        axis.set_xlim(xr[0], xr[-1])
+        axis.set_ylim(-half_ry, half_ry)
+        axis.grid(False)
+        axis.set_yticks([-1, 0, 1])
+        axis.set_ylabel(r"$y$ ($\lambda/D$)")
+        axis.text(0.03, 0.93, text, transform=axis.transAxes, fontsize=8, va="top", bbox=note)
+    ax_top.set_xticklabels([])
+    ax_bot.set_xlabel(r"$x$ ($\lambda/D$)")
+    bar2 = fig.colorbar(shown, cax=cax2, orientation="vertical")
+    bar_style(bar2, r"$I/I_{\max}$", [0, 0.25, 0.5, 0.75, 1],
+              [r"$0$", r"$0.25$", r"$0.5$", r"$0.75$", r"$1$"])
+    fig.text(1 - right / width_in, 0.05 / height_in, example_tag("afmhot10usgrey"),
+             ha="right", va="bottom", fontsize=8)
+    amore.save(fig, OUT / "amore_airy", dpi=README_DPI, formats=("pdf", "png"), exact_size=True)
+    plt.close(fig)
+
 def palette_chart():
     """Every colour of amore: one row for each palette, one swatch for each tone with its hex
-    code and its lightness L*, and the colour map of the palette. Shown in README.md."""
+    code and its lightness L*, and the colour map of the palette. Below them: the diverging map,
+    fakeparulapastel, afmhot10us and its grey version afmhot10usgrey, and the overlay grey.
+    Shown in README.md."""
     from matplotlib.patches import FancyBboxPatch
     order = ("red", "amber", "olive", "green", "teal", "blue", "plum", "slate")
-    fig, ax = plt.subplots(figsize=(7.2, 5.5), layout="constrained")
+    fig, ax = plt.subplots(figsize=(7.2, 6.25), layout="constrained")
     ax.set_xlim(0, 7.2)
-    ax.set_ylim(-2.25, len(order) + 0.15)
+    ax.set_ylim(-3.65, len(order) + 0.15)
     ax.axis("off")
     for j, tone in enumerate(amore.TONES):
         ax.text(1.55 + 1.05 * j, len(order) - 0.15, r"\texttt{%s}" % tone, ha="center", fontsize=9)
@@ -1011,16 +1335,21 @@ def palette_chart():
     ax.text(0.92, -1.32, r"\texttt{fakeparulapastel}", ha="right", va="center", fontsize=9)
     ax.imshow(np.linspace(0, 1, 256)[None, :], cmap=amore.fakeparulapastel(), aspect="auto",
               extent=(1.05, 5.20, -1.63, -1.01))
-    ax.text(0.92, -1.95, r"\texttt{overlay}", ha="right", va="center", fontsize=9)
-    ax.add_patch(FancyBboxPatch((1.05, -2.17), 1.0, 0.42, boxstyle="round,pad=0,rounding_size=0.06",
+    # The two afmhot maps, in the same rows as the maps above (0.70 apart).
+    for label, cmap, y0 in (("afmhot10us", amore.afmhot10us(), -2.33),
+                            ("afmhot10usgrey", amore.afmhot10usgrey(), -3.03)):
+        ax.text(0.92, y0 + 0.31, r"\texttt{%s}" % label, ha="right", va="center", fontsize=9)
+        ax.imshow(np.linspace(0, 1, 256)[None, :], cmap=cmap, aspect="auto",
+                  extent=(1.05, 5.20, y0, y0 + 0.62))
+    ax.text(0.92, -3.35, r"\texttt{overlay}", ha="right", va="center", fontsize=9)
+    ax.add_patch(FancyBboxPatch((1.05, -3.57), 1.0, 0.42, boxstyle="round,pad=0,rounding_size=0.06",
                                 facecolor=amore.OVERLAY, alpha=amore.OVERLAY_ALPHA, edgecolor="none"))
-    ax.text(2.2, -1.96, r"\texttt{%s} at %.0f\,\%% opacity, for lines on a colour map"
+    ax.text(2.2, -3.36, r"\texttt{%s} at %.0f\,\%% opacity, for lines on a colour map"
             % (amore.OVERLAY.lstrip("#"), 100 * amore.OVERLAY_ALPHA), va="center", fontsize=8)
-    ax.text(7.15, -1.96, r"\textbf{%d colours}" % (len(order) * len(amore.TONES)), ha="right",
+    ax.text(7.15, -3.36, r"\textbf{%d colours}" % (len(order) * len(amore.TONES)), ha="right",
             va="center", fontsize=9)
     amore.save(fig, OUT / "amore_palettes", dpi=README_DPI, formats=("pdf", "png"), exact_size=True)
     plt.close(fig)
-
 
 if __name__ == "__main__":
     amore.use()
@@ -1030,6 +1359,9 @@ if __name__ == "__main__":
     kerr_curvature()
     corner_plot()
     chirikov_map()
+    chirikov_square()
     pendulum_portrait()
+    double_slit()
+    airy_rings()
     palette_chart()
     print(f"wrote the example figures and the palette chart in {OUT}")

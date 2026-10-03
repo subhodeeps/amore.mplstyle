@@ -188,7 +188,16 @@ def test_standard_map_image_window_rows_are_p():
         colours = {tuple(np.round(px * 255).astype(int)) for px in row} - {(255, 255, 255)}
         assert len(colours) == 1
 
-
+def test_standard_map_image_whole_phase_space_window():
+    """The window of chirikov_square(): phi from 0 to 2 pi, centred on pi, outside [-pi, pi].
+    For k = 0 every row of the image is one horizontal orbit, so it has one colour besides white."""
+    img = examples.standard_map_image(0.0, phi_range=(0.0, 2 * np.pi), shape=(60, 60),
+                                      grid=(60, 60), steps=300)
+    assert img.shape == (60, 60, 3)
+    for row in img:
+        colours = {tuple(np.round(px * 255).astype(int)) for px in row} - {(255, 255, 255)}
+        assert len(colours) == 1
+        
 def test_pendulum_orbits_conserve_energy_and_have_the_right_kinds():
     """pendulum_orbits() keeps E = y^2 / 2 - cos(x); librations stay in |x| < pi, rotations run on."""
     x, y = examples.pendulum_orbits([0.0, 0.0, 5 * np.pi, -5 * np.pi], [1.95, -0.5, -1.0, 2.0], 45.0, 1000)
@@ -197,3 +206,133 @@ def test_pendulum_orbits_conserve_energy_and_have_the_right_kinds():
     assert np.all(np.abs(x[:2]) < np.pi)                    # librations: inside the separatrix
     assert np.all(np.diff(x[2]) < 0) and np.all(np.diff(x[3]) > 0)   # rotations: one direction
     assert np.max(np.abs(energy[:, 0] - np.array([1.95 ** 2 / 2 - 1, 0.125 - 1, 1.5, 3.0]))) < 1e-12
+
+# --- the double slit (double_slit): Fresnel diffraction with one FFT -------------------------
+# Lengths in mm. The values are those of the post that the example follows.
+WAVELENGTH, DISTANCE = 18.5e-7, 5000.0
+CELL = 1e-3
+
+
+def slit_grid(nx=2800, ny=2000):
+    return CELL * (np.arange(nx) - nx // 2), CELL * (np.arange(ny) - ny // 2)
+
+
+def slit_pattern(slits):
+    x, y = slit_grid()
+    aperture = examples.slit_aperture(x, y, slits)
+    xs, ys, intensity = examples.fresnel_pattern(aperture, CELL, CELL, WAVELENGTH, DISTANCE)
+    return aperture, xs, ys, intensity
+
+
+def test_slit_aperture_has_the_exact_open_area_even_off_the_grid():
+    x, y = slit_grid(400, 300)
+    for width, height, x0 in ((0.0227, 0.0713, 0.0), (0.0227, 0.0713, 0.0431), (0.05, 0.05, -0.1)):
+        aperture = examples.slit_aperture(x, y, [(x0, 0.0, width, height)])
+        assert abs(aperture.sum() * CELL * CELL - width * height) < 1e-12
+
+
+def test_fresnel_pattern_conserves_energy():
+    """Parseval: the intensity integrated over the screen is dx dy sum(aperture^2), and that is
+    within 3 % of the open area (the difference is the cells on the slit edges)."""
+    aperture, xs, ys, intensity = slit_pattern([(-0.064, 0, 0.022, 0.088), (0.064, 0, 0.022, 0.088)])
+    power = intensity.sum() * (xs[1] - xs[0]) * (ys[1] - ys[0])
+    assert abs(power / (CELL * CELL * np.sum(aperture ** 2)) - 1) < 1e-9
+    assert abs(power / (2 * 0.022 * 0.088) - 1) < 0.03
+
+
+def test_one_slit_gives_the_sinc_squared_in_x():
+    """Along y = 0 the pattern of one slit is sinc^2(a x / (wavelength z)); the Fresnel number
+    of the slit width is 0.013, so the far field holds in x (it does not in y)."""
+    _, xs, ys, intensity = slit_pattern([(0, 0, 0.022, 0.088)])
+    row = intensity[ys.size // 2]
+    ratio = row / row[xs.size // 2]
+    near = np.abs(xs) < 0.8
+    expected = np.sinc(0.022 * xs / (WAVELENGTH * DISTANCE)) ** 2
+    assert np.abs(ratio - expected)[near].max() < 0.01
+
+
+def test_double_slit_fringes_are_wavelength_z_over_d_apart():
+    """The central fringe maxima are at x = m wavelength z / D, to one screen cell (3.3 um).
+    The envelope pulls the maxima by up to 0.75 cell, so this fixes D only to about 3 %: it
+    fails for D = 0.125 mm but not for 0.130 mm. The sinc test above is the sharp one."""
+    separation = 0.128
+    _, xs, ys, intensity = slit_pattern([(-separation / 2, 0, 0.022, 0.088),
+                                         (separation / 2, 0, 0.022, 0.088)])
+    row = intensity[ys.size // 2]
+    peaks = [i for i in range(1, row.size - 1)
+             if row[i] > row[i - 1] and row[i] >= row[i + 1] and 0 <= xs[i] < 0.25]
+    found = xs[peaks]
+    spacing = WAVELENGTH * DISTANCE / separation
+    assert len(found) == 4                                   # m = 0, 1, 2, 3
+    assert np.all(np.abs(found - spacing * np.arange(4)) <= xs[1] - xs[0])
+
+
+def test_fresnel_pattern_refuses_a_grid_that_is_too_coarse():
+    x, y = 0.01 * (np.arange(400) - 200), 0.01 * (np.arange(400) - 200)
+    aperture = examples.slit_aperture(x, y, [(0, 0, 0.5, 0.5)])
+    with pytest.raises(ValueError):
+        examples.fresnel_pattern(aperture, 0.01, 0.01, WAVELENGTH, DISTANCE)
+
+# --- Airy rings (airy_rings): the pattern of a circular aperture ------------------------------
+# Lengths in units of lambda / D. Hill's expression is checked against identities that do not
+# use it: the zeros of J1, the enclosed energy 1 - J0^2 - J1^2, and the FFT of a real aperture.
+
+
+def test_airy_pattern_has_unit_peak_and_zeros_at_the_zeros_of_j1():
+    from scipy.special import jn_zeros
+    assert float(examples.airy_pattern(0.0)) == 1.0
+    zeros = jn_zeros(1, 4) / np.pi                     # 1.21967, 2.23313, 3.23832, 4.24106
+    assert abs(zeros[0] - 1.21967) < 1e-5              # the Rayleigh radius
+    assert np.all(examples.airy_pattern(zeros) < 1e-20)
+    assert np.all(examples.airy_pattern(np.linspace(0.05, 6, 400)) > 0)
+
+
+def test_airy_energy_inside_the_first_dark_ring_is_83_8_percent():
+    """The energy inside rho is 1 - J0(x)^2 - J1(x)^2 of the total 4 / pi (x = pi rho)."""
+    from scipy.special import j0, j1, jn_zeros
+    x1 = jn_zeros(1, 1)[0]
+    exact = 1 - j0(x1) ** 2 - j1(x1) ** 2
+    assert abs(exact - 0.838) < 1e-3                   # the number every optics text quotes
+    h = 0.005
+    grid = h * np.arange(-280, 281)                    # -1.4 ... 1.4
+    gx, gy = np.meshgrid(grid, grid)
+    image = examples.point_sources(gx, gy, [(0.0, 0.0)])
+    inside = np.hypot(gx, gy) < x1 / np.pi
+    assert abs(image[inside].sum() * h * h / (4 / np.pi) - exact) < 1e-3
+
+
+def test_airy_pattern_equals_the_fft_of_a_circular_aperture():
+    """fresnel_pattern() from the double-slit example, far from a round hole, gives the Airy
+    pattern: here the Fresnel number is 2e-4. The agreement is 2e-5 of the peak; a rho that is
+    5 % too large or too small gives 0.04."""
+    wavelength, distance, diameter, n, across = 5e-4, 1e5, 0.2, 2048, 128    # mm; 128 cells
+    cell = diameter / across
+    x = cell * (np.arange(n) - n // 2)
+    gx, gy = np.meshgrid(x, x)
+    aperture = np.clip(0.5 + (diameter / 2 - np.hypot(gx, gy)) / cell, 0, 1)
+    xs, _, intensity = examples.fresnel_pattern(aperture, cell, cell, wavelength, distance)
+    row = intensity[n // 2] / intensity[n // 2, n // 2]
+    rho = xs * diameter / (wavelength * distance)      # angle in units of lambda / D
+    near = np.abs(rho) <= 4
+    assert np.abs(row - examples.airy_pattern(rho))[near].max() < 1e-3
+    assert np.abs(row - examples.airy_pattern(1.05 * rho))[near].max() > 0.02
+
+
+def test_two_sources_at_the_rayleigh_distance_have_a_dip_of_73_5_percent():
+    """The criterion: the sources are one first-zero radius apart, so each is at a zero of the
+    other, the maximum is 1, and the saddle between them is 0.735 of it."""
+    from scipy.special import jn_zeros
+    rayleigh = jn_zeros(1, 1)[0] / np.pi
+    x = np.linspace(-2, 2, 4001)
+    cut = examples.point_sources(x, 0 * x, [(-rayleigh / 2, 0.0), (rayleigh / 2, 0.0)])
+    assert abs(cut.max() - 1.0) < 1e-3
+    assert abs(cut[2000] / cut.max() - 0.735) < 1e-3   # x = 0 is the middle sample
+
+
+def test_two_sources_closer_than_the_rayleigh_distance_merge():
+    """At half the Rayleigh distance the middle is the maximum, and the profile falls to each
+    side: one blob."""
+    x = np.linspace(0, 1.5, 1501)
+    cut = examples.point_sources(x, 0 * x, [(-0.305, 0.0), (0.305, 0.0)])
+    assert cut.argmax() == 0
+    assert np.all(np.diff(cut[:1000]) < 0)
